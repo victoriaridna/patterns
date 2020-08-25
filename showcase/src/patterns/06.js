@@ -2,7 +2,7 @@ import React, {useState, useLayoutEffect, useCallback} from 'react';
 import mojs from 'mo-js';
 import styles from './index.css';
 
-const initialState = {
+const INITIAL_STATE = {
 	count: 0,
 	countTotal: 267,
 	isClicked: false
@@ -100,18 +100,38 @@ const useClapAnimation = ({
 	return animationTimeline
 }
 
-const MediumClap = () => {
-	const MAXIMUM_USER_CLAP = 50;
+const useDOMRef = () => {
+	const [DOMRef, setRefsState] = useState({})
+	const setRef = useCallback((node)=>{
+		setRefsState(prevRefState => ({
+			...prevRefState,
+			[node.dataset.refkey]: node
+		}))
+	}, [])
+	return [DOMRef, setRef]
+}
+
+const useClapState = (initialState = INITIAL_STATE) => {
 	const [clapState, setClapState] = useState(initialState);
+	const {countTotal, count} = clapState;
+	const MAXIMUM_USER_CLAP = 50;
+
+	const updateClapState = useCallback(() => {
+		setClapState(({countTotal, count}) => ({
+			isClicked: true,
+			count: Math.min(count + 1, MAXIMUM_USER_CLAP),
+			countTotal: count < MAXIMUM_USER_CLAP ? countTotal + 1 : count
+		}))
+	}, [countTotal, count])
+
+	return [clapState, updateClapState]
+}
+
+const MediumClap = () => {
+	const [clapState, updateClapState] = useClapState()
 	const {count, countTotal, isClicked} = clapState;
 
-	const [{clapRef, clapCountRef, clapTotalRef}, setRefsState] = useState({})
-	const setRef = useCallback((node)=>{
-			setRefsState(prevRefState => ({
-				...prevRefState,
-				[node.dataset.refkey]: node
-			}))
-	}, [])
+	const [{clapRef, clapCountRef, clapTotalRef}, setRef] = useDOMRef()
 	const animationTimeline = useClapAnimation({
 		clapEl: clapRef,
 		countEl: clapCountRef,
@@ -120,11 +140,7 @@ const MediumClap = () => {
 
 	const handleClapClick = () => {
 		animationTimeline.replay()
-		setClapState(prevState => ({
-			isClicked: true,
-			count: Math.min(prevState.count + 1, MAXIMUM_USER_CLAP),
-			countTotal: count < MAXIMUM_USER_CLAP ? prevState.countTotal + 1 : prevState.count
-		}))
+		updateClapState()
 	}
 
 	return (
